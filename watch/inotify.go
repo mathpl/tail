@@ -4,7 +4,7 @@ package watch
 
 import (
 	"fmt"
-	"github.com/ActiveState/tail/util"
+	"github.com/mathpl/tail/util"
 	"github.com/howeyc/fsnotify"
 	"launchpad.net/tomb"
 	"os"

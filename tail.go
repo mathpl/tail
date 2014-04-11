@@ -5,8 +5,8 @@ package tail
 import (
 	"bufio"
 	"fmt"
-	"github.com/ActiveState/tail/util"
-	"github.com/ActiveState/tail/watch"
+	"github.com/mathpl/tail/util"
+	"github.com/mathpl/tail/watch"
 	"io"
 	"io/ioutil"
 	"launchpad.net/tomb"
