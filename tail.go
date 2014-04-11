@@ -12,7 +12,6 @@ import (
 	"launchpad.net/tomb"
 	"log"
 	"os"
-	"time"
 )
 
 var (
@@ -21,13 +20,12 @@ var (
 
 type Line struct {
 	Text string
-	Time time.Time
 	Err  error // Error from tail
 }
 
 // NewLine returns a Line with present time.
 func NewLine(text string) *Line {
-	return &Line{text, time.Now(), nil}
+	return &Line{text, nil}
 }
 
 // SeekInfo represents arguments to `os.Seek`
@@ -213,15 +211,7 @@ func (tail *Tail) tailFileSync() {
 					msg := "Too much activity; entering a cool-off period"
 					tail.Lines <- &Line{
 						msg,
-						time.Now(),
 						fmt.Errorf(msg)}
-					// Wait a second before seeking till the end of
-					// file when rate limit is reached.
-					select {
-					case <-time.After(time.Second):
-					case <-tail.Dying():
-						return
-					}
 					_, err := tail.file.Seek(0, 2) // Seek to fine end
 					if err != nil {
 						tail.Killf("Seek error on %s: %s", tail.Filename, err)
@@ -304,8 +294,6 @@ func (tail *Tail) waitForChanges() error {
 // sendLine sends the line(s) to Lines channel, splitting longer lines
 // if necessary. Return false if rate limit is reached.
 func (tail *Tail) sendLine(line []byte) bool {
-	now := time.Now()
-	nowUnix := now.Unix()
 	lines := []string{string(line)}
 
 	// Split longer lines
@@ -315,15 +303,7 @@ func (tail *Tail) sendLine(line []byte) bool {
 	}
 
 	for _, line := range lines {
-		tail.Lines <- &Line{line, now, nil}
-		rate := tail.rateMon.Tick(nowUnix)
-		if tail.LimitRate > 0 && rate > tail.LimitRate {
-			tail.Logger.Printf("Rate limit (%v < %v) reached on file (%v); entering 1s cooloff period.\n",
-				tail.LimitRate,
-				rate,
-				tail.Filename)
-			return false
-		}
+		tail.Lines <- &Line{line, nil}
 	}
 
 	return true
