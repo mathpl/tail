@@ -12,6 +12,7 @@ import (
 	"launchpad.net/tomb"
 	"log"
 	"os"
+	"time"
 )
 
 var (
@@ -190,7 +191,7 @@ func (tail *Tail) tailFileSync() {
 	// Seek to requested location on first open of the file.
 	if tail.Location != nil {
 		_, err := tail.file.Seek(tail.Location.Offset, tail.Location.Whence)
-		tail.Logger.Printf("Seeked %s - %+v\n", tail.Filename, tail.Location)
+		//tail.Logger.Printf("Seeked %s - %+v\n", tail.Filename, tail.Location)
 		if err != nil {
 			tail.Killf("Seek error on %s: %s", tail.Filename, err)
 			return
@@ -212,6 +213,13 @@ func (tail *Tail) tailFileSync() {
 					tail.Lines <- &Line{
 						msg,
 						fmt.Errorf(msg)}
+					// Wait a second before seeking till the end of
+					// file when rate limit is reached.
+					select {
+					case <-time.After(time.Second):
+					case <-tail.Dying():
+						return
+					}
 					_, err := tail.file.Seek(0, 2) // Seek to fine end
 					if err != nil {
 						tail.Killf("Seek error on %s: %s", tail.Filename, err)
