@@ -4,8 +4,8 @@ package watch
 
 import (
 	"fmt"
-	"github.com/mathpl/tail/util"
 	"github.com/howeyc/fsnotify"
+	"github.com/mathpl/tail/util"
 	"launchpad.net/tomb"
 	"os"
 	"path/filepath"
@@ -68,9 +68,15 @@ func (fw *InotifyFileWatcher) ChangeEvents(t *tomb.Tomb, fi os.FileInfo) *FileCh
 	if err != nil {
 		util.Fatal("Error creating fsnotify watcher: %v", err)
 	}
-	err = w.Watch(fw.Filename)
-	if err != nil {
+	if err = w.Watch(fw.Filename); err != nil {
 		util.Fatal("Error watching %v: %v", fw.Filename, err)
+	}
+
+	// Watch the directory to be notified when the file is deleted since the file
+	// watch is on the inode, not the path.
+	dirname := filepath.Dir(fw.Filename)
+	if err := w.WatchFlags(dirname, fsnotify.FSN_DELETE); err != nil {
+		util.Fatal("Error watching %v: %v", dirname, err)
 	}
 
 	fw.Size = fi.Size()
@@ -96,6 +102,9 @@ func (fw *InotifyFileWatcher) ChangeEvents(t *tomb.Tomb, fi os.FileInfo) *FileCh
 
 			switch {
 			case evt.IsDelete():
+				if filepath.Base(evt.Name) != filepath.Base(fw.Filename) {
+					continue
+				}
 				fallthrough
 
 			case evt.IsRename():
